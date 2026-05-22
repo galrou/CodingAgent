@@ -7,8 +7,6 @@ from langchain_groq import ChatGroq
 from graph import create_app
 
 warnings.filterwarnings("ignore")
-
-# Load environment variables from .env file
 load_dotenv()
 
 def main():

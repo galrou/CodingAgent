@@ -7,15 +7,17 @@ class QA:
     def write_tests(self, state):
         print("---QA: Writing Tests---")
         res = self.llm.invoke([("system", """You are a Python test generator.
-                                Return ONLY valid executable Python code.
-                                Do NOT include:
-                                - explanations
-                                - markdown
-                                - comments outside code
-                                - backticks
-                                - prose
-                                - headings
-                                Output must be runnable as a .py file."""),
+
+Return ONLY valid executable Python code.
+Do NOT include:
+- explanations
+- markdown
+- comments outside code
+- backticks
+- prose
+- headings
+
+Output must be runnable as a .py file."""),
                                 ("human", state['code'])])
         tests = res.content.replace("```python", "").replace("```", "").strip()
         return {"tests": tests}
