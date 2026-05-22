@@ -1,43 +1,37 @@
 from langgraph.graph import StateGraph, START, END
+from roles import Engineer,QA
 from models import AgentState
-from agent import Agent
 
-def create_app(api_key: str):
-    # Initialize our OOP Agent
-    agent = Agent(model_name="llama-3.3-70b-versatile", api_key=api_key)
+
+def create_app(llm):
+    # Initialize Roles
+    engineer = Engineer(llm)
+    qa = QA(llm)
 
     workflow = StateGraph(AgentState)
 
-    # 1. Add All Nodes
-    workflow.add_node("coder", agent.code_editor)
-    workflow.add_node("test_writer", agent.test_writer)
-    workflow.add_node("executor", agent.executor)
-    workflow.add_node("documenter", agent.documenter)
-    workflow.add_node("saver", agent.file_saver)
+    # Add Nodes
+    workflow.add_node("coder", engineer.code_editor)
+    workflow.add_node("test_writer", qa.write_tests)
+    workflow.add_node("executor", qa.run_tests)
 
-    # 2. Define the Linear Flow
+    # Wiring
     workflow.add_edge(START, "coder")
     workflow.add_edge("coder", "test_writer")
     workflow.add_edge("test_writer", "executor")
 
-    # 3. Define Logic for Redoing vs. Finishing
-    def decide_to_end(state: AgentState):
+    # The Decision Logic
+    def route_after_test(state):
         if state["is_fixed"]:
-            return "document"
+            return "end"
+        if state.get("retry_count", 0) >= 3:  # ADD THIS - stop after 3 retries
+            return "end"
         return "retry"
 
-    # Route based on the REAL terminal output from the executor
     workflow.add_conditional_edges(
         "executor",
-        decide_to_end,
-        {
-            "document": "documenter",
-            "retry": "coder"
-        }
+        route_after_test,
+        {"end": END, "retry": "coder"}
     )
-
-    # 4. Final Cleanup Steps
-    workflow.add_edge("documenter", "saver")
-    workflow.add_edge("saver", END)
 
     return workflow.compile()
