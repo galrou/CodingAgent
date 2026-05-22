@@ -9,3 +9,4 @@ class AgentState(TypedDict):
     test_results: str
     is_fixed: bool
     retry_count: int
+    sandbox_path: str

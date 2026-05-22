@@ -1,4 +1,4 @@
-from tools import run_integration_test
+import os
 
 class QA:
     def __init__(self, llm):
@@ -7,26 +7,20 @@ class QA:
     def write_tests(self, state):
         print("---QA: Writing Tests---")
         res = self.llm.invoke([("system", """You are a Python test generator.
+Make sure you import the function from 'solution'. E.g., 'from solution import ...'
 
 Return ONLY valid executable Python code.
-Do NOT include:
-- explanations
-- markdown
-- comments outside code
-- backticks
-- prose
-- headings
+Do NOT include explanations, markdown, or backticks."""),
+                               ("human", f"Code to test:\n{state['code']}")])
 
-Output must be runnable as a .py file."""),
-                                ("human", state['code'])])
         tests = res.content.replace("```python", "").replace("```", "").strip()
-        return {"tests": tests}
 
-    def run_tests(self, state):
-        print("---QA: Executing Tests---")
-        result = run_integration_test(state['code'], state['tests'])
-        return {
-            "terminal_output": result["output"],
-            "is_fixed": result["success"],
-            "retry_count": state.get("retry_count", 0) + 1
-        }
+        # ---> OOP BEST PRACTICE: Write the test file to the sandbox <---
+        sandbox_dir = state["sandbox_path"]
+        test_path = os.path.join(sandbox_dir, "test_solution.py")
+        os.makedirs(os.path.dirname(test_path), exist_ok=True)
+        with open(test_path, "w", encoding="utf-8") as f:
+            f.write(tests)
+
+        print(f"[QA] Saved test suite to sandbox: {test_path}")
+        return {"tests": tests}

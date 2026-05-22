@@ -1,13 +1,12 @@
 import warnings
 import os
 from dotenv import load_dotenv
-
 from langchain_groq import ChatGroq
-
-from graph import create_app
+from agent_pipeline import AgentPipeline
 
 warnings.filterwarnings("ignore")
 load_dotenv()
+
 
 def main():
     api_key = os.getenv("GROQ_API_KEY")
@@ -19,19 +18,22 @@ def main():
         model="llama-3.3-70b-versatile",
         temperature=0
     )
-    app = create_app(llm)
+    pipeline = AgentPipeline(llm=llm, sandbox_branch="agent-palindrome-run")
 
     task = "Write a python function that checks if a string is a palindrome and add logging (and check that the logging works)."
+
     initial_input = {
         "task": task,
         "code": "",
         "test_results": "None",
         "is_fixed": False,
-        "retry_count": 0
+        "retry_count": 0,
+        "sandbox_path": ""
     }
-    for event in app.stream(initial_input):
+
+    for event in pipeline.run(initial_input):
         print(event)
+
 
 if __name__ == "__main__":
     main()
-
