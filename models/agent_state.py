@@ -1,12 +1,17 @@
-from typing import TypedDict
+from typing import Dict, Any, List
+from typing_extensions import TypedDict
 
 
 class AgentState(TypedDict):
-    task: str
-    code: str
-    tests: str
+    # Core Task Info
+    task_description: str
+    current_file_path: str
+
+    # Execution Tracking
+    code_history: List[str]
     terminal_output: str
-    test_results: str
-    is_fixed: bool
+    error_summary: str
+
+    # Control Flow State
     retry_count: int
-    sandbox_path: str
+    is_fixed: bool

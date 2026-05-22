@@ -23,7 +23,7 @@ def main():
     task = "Write a python function that checks if a string is a palindrome and add logging (and check that the logging works)."
 
     initial_input = {
-        "task": task,
+        "task_description": task,
         "code": "",
         "test_results": "None",
         "is_fixed": False,

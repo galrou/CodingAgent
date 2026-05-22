@@ -1,26 +1,39 @@
-import os
+from typing import Dict, Any
+from models import AgentState
+from workspace_sandbox import WorkspaceSandbox
+
 
 class QA:
-    def __init__(self, llm):
-        self.llm = llm
+    def __init__(self, sandbox: WorkspaceSandbox):
+        self.sandbox = sandbox
 
-    def write_tests(self, state):
-        print("---QA: Writing Tests---")
-        res = self.llm.invoke([("system", """You are a Python test generator.
-Make sure you import the function from 'solution'. E.g., 'from solution import ...'
+    def write_tests(self, state: AgentState) -> Dict[str, Any]:
+        print(f"[QA] Running validation suite on {state['current_file_path']}...")
 
-Return ONLY valid executable Python code.
-Do NOT include explanations, markdown, or backticks."""),
-                               ("human", f"Code to test:\n{state['code']}")])
+        # Execute tests via our isolated sandbox environment layer
+        run_results = self.sandbox.run_tests(test_target=state['current_file_path'])
 
-        tests = res.content.replace("```python", "").replace("```", "").strip()
+        # ---------- FIXED HERE ----------
+        # Changed from "terminal_output" to "output"
+        terminal_log = run_results.get("output", "")
+        # Changed from "is_fixed" to "success"
+        is_successful = run_results.get("success", False)
+        # --------------------------------
 
-        # ---> OOP BEST PRACTICE: Write the test file to the sandbox <---
-        sandbox_dir = state["sandbox_path"]
-        test_path = os.path.join(sandbox_dir, "test_solution.py")
-        os.makedirs(os.path.dirname(test_path), exist_ok=True)
-        with open(test_path, "w", encoding="utf-8") as f:
-            f.write(tests)
+        # Extract a clean snippet of the error traceback if it exists
+        error_lines = []
 
-        print(f"[QA] Saved test suite to sandbox: {test_path}")
-        return {"tests": tests}
+        # If execution wasn't successful, log what went wrong
+        if not is_successful:
+            if terminal_log:
+                error_lines = terminal_log.splitlines()[-15:]
+            else:
+                error_lines = ["Execution finished with an error, but terminal output was completely empty."]
+
+        # Return the exact state fields your langgraph workflow state expects
+        return {
+            "terminal_output": terminal_log,
+            "error_summary": "\n".join(error_lines),
+            "is_fixed": is_successful,
+            "retry_count": state.get("retry_count", 0) + (0 if is_successful else 1)
+        }
